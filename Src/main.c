@@ -101,6 +101,9 @@ void vTask_Bola (void *pvParameters){
 
 }
 
+
+/* Juca esta com fome */
+
 void vTask_Base (void *pvParameters){
 	struct pontos_t t;
 	uint32_t i=0;
