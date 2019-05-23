@@ -30,7 +30,10 @@ uint32_t valor_ADC[2];
 
 static uint32_t perdeu;					// Flag usada para indicar se jogador perdeu
 static uint32_t venceu;					// Flag usada para indicar se jogador venceu
-
+static uint32_t posicao_base_x1[100] = {};	// Vetor posição no eixo X da barra
+static uint32_t posicao_base_x2[100] = {};	// Vetor posição no eixo Y da barra
+static uint32_t posicao_bola_x[100] = {};	// Vetor posição no eixo X da barra
+static uint32_t posicao_bola_y[100] = {};	// Vetor posição no eixo Y da barra
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,18 +78,32 @@ void vTask_Quadradinhos (void *pvParameters){
 
 }
 void vTask_Bola (void *pvParameters){
-	uint32_t x=42;
-	uint32_t y=42;
-
+	uint32_t x=50;
+	uint32_t y=50;
+	uint32_t i=0,flag=0;
+	desenha_circulo(x,y,2,1);
 	while (1){
+			posicao_bola_x[0]=x;
+			posicao_bola_y[0]=y;
+			escreve_Nr_Peq(0,0,posicao_base_x2[0],10);
+			escreve_Nr_Peq(0,6,posicao_bola_x[0],10);
 
-			desenha_circulo(x,y,2,1);
+			for(i=0 ; flag=0 ; i++){
+				if(posicao_base_x1[i]==posicao_bola_x[0]){
+					desenha_circulo(x,y,2,0);// apagando o anterior PROBLEMA
+					x++;
+					y--;
+					desenha_circulo(x,y,2,1);
+					flag=1;
+				}
+			}
 	}
 
 }
 
 void vTask_Base (void *pvParameters){
 	struct pontos_t t;
+	uint32_t i=0;
 	t.x2 =50; //sup_x  largura da linha (fica maior quando aumenta o numero)
 	t.y2 =45; //sup_y //altura (fica maior quando diminui o numero)
 	t.x1 = 30; //inf_x // comprimento (linha maior quando diminui o numero
@@ -98,20 +115,25 @@ void vTask_Base (void *pvParameters){
 
 		if(valor_ADC[1]>2500){//direita
 			desenha_retangulo(&t,2);
-			t.x2+=5;
-			t.x1+=5;
+			t.x2+=1;
+			t.x1+=1;
 			desenha_retangulo(&t,3);
 		}
 		HAL_Delay(100);
 
-		if(valor_ADC[1]<1000){//direita
+		if(valor_ADC[1]<1000){//esquerda
 			desenha_retangulo(&t,2);
-			t.x2-=5;
-			t.x1-=5;
+			t.x2-=1;
+			t.x1-=1;
+
 			desenha_retangulo(&t,3);
 		}
+		posicao_base_x1[0]=t.x1;
 
-		HAL_Delay(100);
+		for(i=1 ;t.x1!=t.x2; i++){
+			posicao_base_x1[i]=t.x1+1;
+		}
+
 
 	}
 
@@ -162,7 +184,7 @@ int main(void)
 	// inicializa tela
 
 	goto_XY(0, 0);
-	string_LCD("Breakout Game");
+	//string_LCD("Breakout Game");
 
 
 	HAL_ADC_Start_DMA(&hadc1,(uint32_t*)ADC_buffer,2);
