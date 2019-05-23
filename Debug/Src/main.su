@@ -1,0 +1,9 @@
+main.c:60:6:vTask_LCD_Print	8	static
+main.c:67:6:vTask_Quadradinhos	32	static
+main.c:77:6:vTask_Bola	8	static
+main.c:88:6:vTask_Base	32	static
+main.c:49:6:HAL_ADC_ConvCpltCallback	0	static
+main.c:249:6:SystemClock_Config	96	static
+main.c:128:5:main	64	static
+main.c:430:6:HAL_TIM_PeriodElapsedCallback	0	static
+main.c:449:6:_Error_Handler	0	static
