@@ -30,7 +30,7 @@ uint32_t valor_ADC[2];
 
 static uint32_t perdeu;					// Flag usada para indicar se jogador perdeu
 static uint32_t venceu;					// Flag usada para indicar se jogador venceu
-static uint32_t posicao_base_x1[100] = {};	// Vetor posição no eixo X da barra
+static uint32_t posicao_base_x[2] = {};	// Vetor posição no eixo X da barra
 static uint32_t posicao_base_x2[100] = {};	// Vetor posição no eixo Y da barra
 static uint32_t posicao_bola_x[100] = {};	// Vetor posição no eixo X da barra
 static uint32_t posicao_bola_y[100] = {};	// Vetor posição no eixo Y da barra
@@ -78,24 +78,49 @@ void vTask_Quadradinhos (void *pvParameters){
 
 }
 void vTask_Bola (void *pvParameters){
-	uint32_t x=50;
-	uint32_t y=50;
-	uint32_t i=0,flag=0;
+	uint32_t x=44;
+	uint32_t y=42;
+	uint32_t i=10,flag=0;
 	desenha_circulo(x,y,2,1);
+	HAL_Delay(500);
+
 	while (1){
 			posicao_bola_x[0]=x;
 			posicao_bola_y[0]=y;
-			escreve_Nr_Peq(0,0,posicao_base_x2[0],10);
-			escreve_Nr_Peq(0,6,posicao_bola_x[0],10);
 
-			for(i=0 ; flag=0 ; i++){
-				if(posicao_base_x1[i]==posicao_bola_x[0]){
-					desenha_circulo(x,y,2,0);// apagando o anterior PROBLEMA
-					x++;
-					y--;
-					desenha_circulo(x,y,2,1);
-					flag=1;
+			if(posicao_bola_y[0]+3 >= 45){ // verifica se esta na altura certa (+2 raio)
+				if(posicao_base_x[0] <= posicao_bola_x[0] && posicao_bola_x[0] <= (posicao_base_x[0]+10) ){
+					//esquerda
+					while(i>1){
+						desenha_circulo(x,y,2,0);// apagando o anterior
+						x--;
+						y--;
+						desenha_circulo(x,y,2,1);
+						HAL_Delay(500);
+						i--;
+					}
 				}
+				if(posicao_base_x[1] >= posicao_bola_x[0] && posicao_bola_x[0] > (posicao_base_x[1]-10) ){
+					//direita
+					while(i>1){
+						desenha_circulo(x,y,2,0);// apagando o anterior
+						x++;
+						y--;
+						desenha_circulo(x,y,2,1);
+						HAL_Delay(500);
+						i--;
+					}
+				}
+				/*else{
+					while(1){
+						desenha_circulo(x,y,2,0);// apagando o anterior
+						y--;
+						desenha_circulo(x,y,2,1);
+						goto_XY(20, 0);
+						string_LCD("ass");
+						HAL_Delay(500);
+					}
+				}*/
 			}
 	}
 
@@ -106,7 +131,7 @@ void vTask_Bola (void *pvParameters){
 
 void vTask_Base (void *pvParameters){
 	struct pontos_t t;
-	uint32_t i=0;
+	uint32_t i=0,x1=0,x2=0;
 	t.x2 =50; //sup_x  largura da linha (fica maior quando aumenta o numero)
 	t.y2 =45; //sup_y //altura (fica maior quando diminui o numero)
 	t.x1 = 30; //inf_x // comprimento (linha maior quando diminui o numero
@@ -121,25 +146,26 @@ void vTask_Base (void *pvParameters){
 			t.x2+=1;
 			t.x1+=1;
 			desenha_retangulo(&t,3);
+			HAL_Delay(100);
 		}
-		HAL_Delay(100);
 
 		if(valor_ADC[1]<1000){//esquerda
 			desenha_retangulo(&t,2);
 			t.x2-=1;
 			t.x1-=1;
-
 			desenha_retangulo(&t,3);
+			HAL_Delay(100);
 		}
-		posicao_base_x1[0]=t.x1;
-
-		for(i=1 ;t.x1!=t.x2; i++){
-			posicao_base_x1[i]=t.x1+1;
-		}
-
-
+		posicao_base_x[0]=t.x1;
+		posicao_base_x[1]=t.x2;
+		/*x1=t.x1;
+		for(i=0; i < 20; i++){
+			//escreve_Nr_Peq(0,40,posicao_base_x1[i],10);
+			posicao_base_x1[i]=x1;
+			x1++;
+			//HAL_Delay(250);
+		}*/
 	}
-
 }
 
 //---------------------------------------------------------------------------------------------------
@@ -186,7 +212,7 @@ int main(void)
 	// --------------------------------------------------------------------------------------
 	// inicializa tela
 
-	goto_XY(0, 0);
+//	goto_XY(0, 0);
 	//string_LCD("Breakout Game");
 
 
@@ -233,10 +259,13 @@ int main(void)
 	/* USER CODE BEGIN RTOS_THREADS */
 	xTaskCreate(vTask_LCD_Print, "Task 1", 100, NULL, 1,NULL);
 //	xTaskCreate(vTask_Nr_Print, "Task 2", 100, NULL, 1,NULL);
+
+
+
 	xTaskCreate(vTask_Quadradinhos,"Quadradinhos",100,NULL,1,NULL);
-	xTaskCreate(vTask_Bola,"Bola",100,NULL,1,NULL);
 
 	xTaskCreate(vTask_Base,"Base",100,NULL,1,NULL);
+	xTaskCreate(vTask_Bola,"Bola",100,NULL,1,NULL);
 
 	/* USER CODE END RTOS_THREADS */
 
