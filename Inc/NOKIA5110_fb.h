@@ -40,18 +40,17 @@ struct pontos_t{
 	uint32_t y1;
 	uint32_t x2;
 	uint32_t y2;
-	uint32_t x3;
-	uint32_t y3;	
-};
-
-struct pontos_quadrado_t{
-	uint32_t x1;
-	uint32_t y1;
-	uint32_t x2;
-	uint32_t y2;
+	uint32_t ativo;
 	uint32_t x3;
 	uint32_t y3;
 };
+/*
+
+struct lista{
+	struct pontos_t[84];
+}typedef tLista;
+*/
+
 
 struct figura_t
 {
