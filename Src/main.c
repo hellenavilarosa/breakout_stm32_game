@@ -23,6 +23,7 @@ uint32_t ADC_buffer[2];
 uint32_t valor_ADC[2];
 xTaskHandle Quadradinhos;
 xTaskHandle Bola;
+xTaskHandle Base;
 #define lim_sup_X 80					// Limite superior no eixo X
 #define lim_sup_Y 25					// Limite superior no eixo Y
 #define lim_inf_X 0						// Limite inferior no eixo X
@@ -34,10 +35,11 @@ static uint32_t posicao_base_x[2] = {};	// Vetor posição no eixo X da barra
 static uint32_t posicao_bola_x[100] = {};	// Vetor posição no eixo X da barra
 static uint32_t posicao_bola_y[100] = {};	// Vetor posição no eixo Y da barra
 struct pontos_t posicao_quadrados[25];
-static uint32_t posicao_quadrados_y[25] = {}; // x1
-static uint32_t posicao_quadrados_x[25] = {};//y2
+static uint32_t posicao_quadrados_y[25] = {};
+static uint32_t posicao_quadrados_y1[25] = {};
+static uint32_t posicao_quadrados_x[25] = {};
 static uint32_t posicao_quadrados_ativo[25] = {};//ativo
-static uint32_t detectou_colisao=0;
+static uint32_t detectou_colisao=0,score=0;
 
 static uint32_t n_quadrados_linha=4,tam_quadrado=15,n_linhas=2,alt_quadrado=10;// contando que 5 pixels sao de espaco
 uint32_t semente=1;
@@ -71,45 +73,52 @@ void vTask_LCD_Print(void *pvParameters)
 	while(1) imprime_LCD();
 }
 //---------------------------------------------------------------------------------------------------
-
-void vTask_Quadradinhos (void *pvParameters){
+void desenha_quadradinhos(){
 	uint32_t k=0,t=0,aux=0;// contando que 5 pixels sao de espaco
-	struct pontos_t quadrado;
-	quadrado.ativo = 1;
+		struct pontos_t quadrado;
+		quadrado.ativo = 1;
 
-	quadrado.x1 = 5;
-	quadrado.x2 = 15;
-	quadrado.y1 = 5;
-	quadrado.y2 = 10;
-	posicao_quadrados_x[aux]=quadrado.x1;
-	posicao_quadrados_y[aux]=quadrado.y2;
-	posicao_quadrados[aux] = quadrado;
-	posicao_quadrados_ativo[aux] =quadrado.ativo;
-
-	for(t=0;t<n_linhas;t++){
-		desenha_retangulo(&quadrado,3);
-		for(k=0;k<n_quadrados_linha;k++){
-			quadrado.x1 = (quadrado.x1 + tam_quadrado);
-			quadrado.x2 = (quadrado.x2 + tam_quadrado);
-			quadrado.y1 = quadrado.y1;
-			quadrado.y2 = quadrado.y2;
-			aux++;
-			desenha_retangulo(&quadrado,3);
-			posicao_quadrados[aux] = quadrado;
-			posicao_quadrados_ativo[aux] = quadrado.ativo;
-			posicao_quadrados_x[aux]=quadrado.x1;
-			posicao_quadrados_y[aux]=quadrado.y2;
-		}
 		quadrado.x1 = 5;
 		quadrado.x2 = 15;
-		quadrado.y1 = (quadrado.y1+alt_quadrado);
-		quadrado.y2 = (quadrado.y2+alt_quadrado);
-		aux++;
+		quadrado.y1 = 5;
+		quadrado.y2 = 10;
 		posicao_quadrados_x[aux]=quadrado.x1;
 		posicao_quadrados_y[aux]=quadrado.y2;
+		posicao_quadrados_y1[aux]=quadrado.y1;
 		posicao_quadrados[aux] = quadrado;
-		posicao_quadrados_ativo[aux] = quadrado.ativo;
-	}
+		posicao_quadrados_ativo[aux] =quadrado.ativo;
+
+		for(t=0;t<n_linhas;t++){
+			desenha_retangulo(&quadrado,3);
+			for(k=0;k<n_quadrados_linha;k++){
+				quadrado.x1 = (quadrado.x1 + tam_quadrado);
+				quadrado.x2 = (quadrado.x2 + tam_quadrado);
+				quadrado.y1 = quadrado.y1;
+				quadrado.y2 = quadrado.y2;
+				aux++;
+				desenha_retangulo(&quadrado,3);
+				posicao_quadrados[aux] = quadrado;
+				posicao_quadrados_ativo[aux] = quadrado.ativo;
+				posicao_quadrados_x[aux]=quadrado.x1;
+				posicao_quadrados_y[aux]=quadrado.y2;
+				posicao_quadrados_y1[aux]=quadrado.y1;
+
+			}
+			quadrado.x1 = 5;
+			quadrado.x2 = 15;
+			quadrado.y1 = (quadrado.y1+alt_quadrado);
+			quadrado.y2 = (quadrado.y2+alt_quadrado);
+			aux++;
+			posicao_quadrados_x[aux]=quadrado.x1;
+			posicao_quadrados_y[aux]=quadrado.y2;
+			posicao_quadrados_y1[aux]=quadrado.y1;
+			posicao_quadrados[aux] = quadrado;
+			posicao_quadrados_ativo[aux] = quadrado.ativo;
+		}
+
+}
+void vTask_Quadradinhos (void *pvParameters){
+	desenha_quadradinhos();
 
 
 	while (1){
@@ -121,12 +130,14 @@ void vTask_Quadradinhos (void *pvParameters){
 int detecta_colisao_quadrados(){
 	uint32_t i=0, detecta=0;
 
-	for(i=0;i<10;i++){ //10 quadrados iniciais
-			if( (posicao_bola_y[0]-2==posicao_quadrados_y[i]) && (posicao_bola_x[0]>=posicao_quadrados_x[i]) && (posicao_bola_x[0]<=(posicao_quadrados_x[i]+tam_quadrado)) && (posicao_quadrados_ativo[i] == 1) ){
+	for(i=0;i<(n_linhas*n_quadrados_linha+2);i++){ //10 quadrados iniciais
+			if(((posicao_bola_y[0]-2 <= posicao_quadrados_y[i] && posicao_bola_y[0]-2 >= posicao_quadrados_y1[i]) || (posicao_bola_y[0]+2 <= posicao_quadrados_y[i] && posicao_bola_y[0]+2 >= posicao_quadrados_y1[i])) && (posicao_bola_x[0]>=posicao_quadrados_x[i]) && (posicao_bola_x[0]<=(posicao_quadrados_x[i]+tam_quadrado)) && (posicao_quadrados_ativo[i] == 1) ){
 				detecta=1;
 				desenha_retangulo(&posicao_quadrados[i],2);
 				posicao_quadrados_ativo[i] = 0;
 				detectou_colisao=1;
+				score=score+10;
+				escreve_Nr_Peq(0,0,score,0);
 				return 1;
 			}
 	}
@@ -161,14 +172,15 @@ void movimentaBola (int * x, int * y, char direcao, char altura){
 	desenha_circulo(*x,*y,2,1);//desenha a nova bola
 	posicao_bola_y[0]=*y;//atualiza posicao bola
 	posicao_bola_x[0]=*x;
-	HAL_Delay(100);
+	HAL_Delay(70);
 }
 
 
 int perdeu_jogo(){
 	if(posicao_bola_y[0]+2>45){
+		limpa_LCD();
 		goto_XY(0,0);
-		string_LCD(" *******************************************************sorry, but you LOST :( ");
+		string_LCD("              sorry, but you LOST :(           ");
 		HAL_Delay(1000);
 		return 1;
 		}
@@ -227,40 +239,60 @@ int checa_limites_tela(int x, int y){
 		return 0;
 }
 
-
-void vTask_Bola (void *pvParameters){
-	uint32_t x;
-	uint32_t y=25;
-	uint32_t flag_pos_y=0;
-	uint32_t flag_=0,flag_pos_x[3],flag_b=0;
-	uint32_t perdeu_=0,aleatorio=0,trocouSentido=0;
-
-	srand(semente); // numeros aleatorios
-	x=rand()%82;
-
-	posicao_bola_x[0]=x;
-	posicao_bola_y[0]=y;
-	flag_pos_x[0]=x;
-	desenhaBola;
-
-// INICIO
+void inicializa_bola(int *x,int *y){
+	uint32_t perdeu_=0;
+	posicao_bola_x[0]=*x;
+	posicao_bola_y[0]=*y;
+	//flag_pos_x=x;
+	desenha_circulo(*x,*y,2,1);//desenha a nova bola
 	while(perdeu_== 0){
-			apagaBola;// apagando o anterior
-			y++;
-			desenhaBola;//desenha novo circulo
-			posicao_bola_x[0]=x;
-			posicao_bola_y[0]=y;
-			HAL_Delay(100);
+		desenha_circulo(*x,*y,2,0);//apaga
+			*y=(*y)+1;
+			desenha_circulo(*x,*y,2,1);//desenha a nova bola
+			posicao_bola_x[0]=*x;
+			posicao_bola_y[0]=*y;
+			HAL_Delay(200);
 		//checando se a bola esta batendo na barra
-		if((posicao_bola_y[0]+2==45) && (posicao_bola_x[0]>=posicao_base_x[0] && posicao_bola_x[0]<=posicao_base_x[1]) ){
+		if(checa_bateu_barra()){
 				perdeu_=1;
 		}
 		else{
 			perdeu_jogo();
 		}
 	}
-	perdeu_=0;
+}
 
+void restart(int *x, int *y){
+	score=0;
+	limpa_LCD();
+	goto_XY(0,0);
+	string_LCD("              Press the Joystick to restart                      ");
+	//imprime_LCD();
+	while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){ // enquando nao pressionar joystick fica travado
+				semente++;		// semente para o gerador de n�meros pseudoaleatorios
+								// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
+	}
+	HAL_Delay(200);
+	limpa_LCD();
+	perdeu=1;
+	HAL_Delay(100);
+	desenha_quadradinhos();
+	HAL_Delay(100);
+	inicializa_bola(&(*x),&(*y));
+}
+void vTask_Bola (void *pvParameters){
+	uint32_t x=0;
+	uint32_t y=25;
+	uint32_t flag_pos_y=0;
+	uint32_t flag_=0,flag_pos_x=0,flag_b=0;
+	uint32_t perdeu_=0,aleatorio=0,trocouSentido=0;
+
+
+	srand(semente); // numeros aleatorios
+	x=rand()%82;
+
+	inicializa_bola(&x,&y);
+	flag_pos_x=x;
 
 	while (1){
 		trocouSentido = 0;
@@ -270,7 +302,7 @@ void vTask_Bola (void *pvParameters){
 				// se a bola estiver vindo da direita
 				posicao_bola_x[0]=x;
 				posicao_bola_y[0]=y;
-				if(flag_pos_x[0]>40){
+				if(flag_pos_x>40){
 					aleatorio=rand()%4;
 					apagaBola;
 					x -= aleatorio;
@@ -291,7 +323,7 @@ void vTask_Bola (void *pvParameters){
 					}
 				}
 				//se a bola estiver vindo da esquerda
-				else if(flag_pos_x[0]<=40){
+				else if(flag_pos_x<=40){
 					aleatorio=rand()%4;
 					apagaBola;
 					x += aleatorio;
@@ -317,13 +349,13 @@ void vTask_Bola (void *pvParameters){
 					flag_b=1;
 					posicao_bola_x[0]=x;
 					posicao_bola_y[0]=y;
-					flag_pos_x[0]=x;
+					flag_pos_x=x;
 
 					while(flag_b==1){// caso bateu nos quadrados ele vai voltar na diagonal até que a flag volte para 0
-						if(flag_pos_x[0]>40){ // vindo da direita
+						if(flag_pos_x>40){ // vindo da direita
 							movimentaBola(&x,&y,'E','D');
 						}
-						if(flag_pos_x[0]<=40){//vindo da esquerda
+						if(flag_pos_x<=40){//vindo da esquerda
 							movimentaBola(&x,&y,'D','D');
 						}
 						//checa se bateu na barra
@@ -342,7 +374,7 @@ void vTask_Bola (void *pvParameters){
 						}
 
 					}
-					flag_pos_x[0]=x;
+					flag_pos_x=x;
 					posicao_bola_x[0]=x;
 					posicao_bola_y[0]=y;
 				}
@@ -352,7 +384,7 @@ void vTask_Bola (void *pvParameters){
 				// se a bola estiver vindo da direita
 				posicao_bola_x[0]=x;
 				posicao_bola_y[0]=y;
-				if(flag_pos_x[0]>40){
+				if(flag_pos_x>40){
 					aleatorio=rand()%4;
 					apagaBola;
 					x += aleatorio;
@@ -372,7 +404,7 @@ void vTask_Bola (void *pvParameters){
 					}
 				}
 				//se a bola estiver vindo da esquerda
-				else if(flag_pos_x[0]<=40){
+				else if(flag_pos_x<=40){
 					aleatorio=rand()%4;
 					apagaBola;
 					x -= aleatorio;
@@ -392,7 +424,7 @@ void vTask_Bola (void *pvParameters){
 						}
 					}
 				}
-				flag_pos_x[0]=x;
+				flag_pos_x=x;
 				posicao_bola_x[0]=x;
 				posicao_bola_y[0]=y;
 
@@ -402,10 +434,10 @@ void vTask_Bola (void *pvParameters){
 					posicao_bola_x[0]=x;
 					posicao_bola_y[0]=y;
 					while(flag_==1){// caso bateu nos quadrados ele vai voltar na diagonal até que a flag volte para 0
-						if(flag_pos_x[0]>40){ // vindo da direita
+						if(flag_pos_x>40){ // vindo da direita
 							movimentaBola(&x,&y,'D','D');
 						}
-						else if(flag_pos_x[0]<=40){//vindo da esquerda
+						else if(flag_pos_x<=40){//vindo da esquerda
 							movimentaBola(&x,&y,'E','D');
 						}
 						//checa se bateu na barra
@@ -424,14 +456,14 @@ void vTask_Bola (void *pvParameters){
 							trocouSentido = 1;
 						}
 					}
-					flag_pos_x[0]=x;
+					flag_pos_x=x;
 					posicao_bola_x[0]=x;
 					posicao_bola_y[0]=y;
 				}
 			}
 			if(trocouSentido == 1){
 				flag_= 1;
-				flag_pos_x[0]=x;
+				flag_pos_x=x;
 				flag_pos_y=y;
 				trocouSentido = 0;
 				while(flag_==1){// caso bateu nos quadrados ele vai voltar na diagonal até que a flag volte para 0
@@ -445,19 +477,18 @@ void vTask_Bola (void *pvParameters){
 						flag_=0;
 						detectou_colisao=0;
 					}
-					else if (checa_borda_cim(flag_pos_x[0],flag_pos_y)){
-						goto_XY(0,0);
-						string_LCD("cim");
-						movimentaBola(&x,&y,'D','D');
+					else if (checa_borda_cim(flag_pos_x,flag_pos_y)){
+						if(flag_pos_x>40){
+							movimentaBola(&x,&y,'E','D');
+						}
+						else{
+							movimentaBola(&x,&y,'D','D');
+						}
 					}
-					else if (checa_borda_dir(flag_pos_x[0],flag_pos_y)){
-						goto_XY(0,0);
-						string_LCD("dir");
+					else if (checa_borda_dir(flag_pos_x,flag_pos_y)){
 						movimentaBola(&x,&y,'E','D');
 					}
-					else if (checa_borda_esq(flag_pos_x[0],flag_pos_y)){
-						goto_XY(0,0);
-						string_LCD("esq");
+					else if (checa_borda_esq(flag_pos_x,flag_pos_y)){
 						movimentaBola(&x,&y,'D','D');
 					}
 					if(checa_limites_tela(x,y)){
@@ -467,6 +498,27 @@ void vTask_Bola (void *pvParameters){
 				}
 			}
 		}
+		srand(semente); // numeros aleatorios
+		x=rand()%82;
+		y=25;
+		restart(&x,&y);
+/*		limpa_LCD();
+		goto_XY(0,0);
+		string_LCD("              Press the Joystick to restart                      ");
+		//imprime_LCD();
+		while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){ // enquando nao pressionar joystick fica travado
+					semente++;		// semente para o gerador de n�meros pseudoaleatorios
+									// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
+		}
+		HAL_Delay(200);
+		limpa_LCD();
+		perdeu=1;
+		HAL_Delay(100);
+		desenha_quadradinhos();
+		x=40;
+		y=25;
+		HAL_Delay(100);
+		inicializa_bola(&x,&y);*/
 	}
 }
 
@@ -514,21 +566,21 @@ void vTask_Base (void *pvParameters){
 			}
 
 			desenha_retangulo(&t,3);
-			HAL_Delay(50);
+			HAL_Delay(20);
+		}
+		if(perdeu==1){
+			t.x2 =50; //sup_x  largura da linha (fica maior quando aumenta o numero)
+			t.y2 =45; //sup_y //altura (fica maior quando diminui o numero)
+			t.x1 = 30; //inf_x // comprimento (linha maior quando diminui o numero
+			t.y1 = 50; //inf_y //
+			desenha_retangulo(&t,3);
+			perdeu=0;
 		}
 
 	}
 }
-/*void vTask_Perdeu (void *pvParameters){
 
-	while(1){
-		if (perdeu==1){
-			goto_XY(0,0);
-			string_LCD("************** sorry, but you LOST :(  ***************");
-			perdeu=0; //flag de perdeu
-		}
-	}
-}*/
+
 
 //---------------------------------------------------------------------------------------------------
 /* USER CODE END 0 */
@@ -576,7 +628,7 @@ int main(void)
 	// inicializa tela
 
 	goto_XY(0,0);
-	string_LCD("************** Press the Joystick to start THE BREAKOUT GAME :)       ***************");
+	string_LCD("               Press the Joystick to start THE BREAKOUT GAME :)                     ");
 
 
 	HAL_ADC_Start_DMA(&hadc1,(uint32_t*)ADC_buffer,2);
