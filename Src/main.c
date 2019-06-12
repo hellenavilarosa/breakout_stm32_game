@@ -30,14 +30,14 @@ xTaskHandle Base;
 #define lim_inf_Y 15						// Limite inferior no eixo Y
 #define velocidade 400					// Velocidade da plataforma
 
-uint32_t perdeu=0;					// Flag usada para indicar se jogador perdeu
+uint32_t perdeu=0,fase=0;					// Flag usada para indicar se jogador perdeu
 static uint32_t posicao_base_x[2] = {};	// Vetor posição no eixo X da barra
 static uint32_t posicao_bola_x[100] = {};	// Vetor posição no eixo X da barra
 static uint32_t posicao_bola_y[100] = {};	// Vetor posição no eixo Y da barra
-struct pontos_t posicao_quadrados[25];
-static uint32_t posicao_quadrados_y[25] = {};
-static uint32_t posicao_quadrados_y1[25] = {};
-static uint32_t posicao_quadrados_x[25] = {};
+struct pontos_t posicao_quadrados[30];
+static uint32_t posicao_quadrados_y[30] = {};
+static uint32_t posicao_quadrados_y1[30] = {};
+static uint32_t posicao_quadrados_x[30] = {};
 static uint32_t posicao_quadrados_ativo[25] = {};//ativo
 static uint32_t detectou_colisao=0,score=0;
 
@@ -104,6 +104,7 @@ void desenha_quadradinhos(){
 				posicao_quadrados_y1[aux]=quadrado.y1;
 
 			}
+			posicao_quadrados[aux] = quadrado;
 			quadrado.x1 = 5;
 			quadrado.x2 = 15;
 			quadrado.y1 = (quadrado.y1+alt_quadrado);
@@ -130,7 +131,7 @@ void vTask_Quadradinhos (void *pvParameters){
 int detecta_colisao_quadrados(){
 	uint32_t i=0, detecta=0;
 
-	for(i=0;i<(n_linhas*n_quadrados_linha+2);i++){ //10 quadrados iniciais
+	for(i=0;i<((n_linhas*n_quadrados_linha)+2);i++){ //10 quadrados iniciais
 			if(((posicao_bola_y[0]-2 <= posicao_quadrados_y[i] && posicao_bola_y[0]-2 >= posicao_quadrados_y1[i]) || (posicao_bola_y[0]+2 <= posicao_quadrados_y[i] && posicao_bola_y[0]+2 >= posicao_quadrados_y1[i])) && (posicao_bola_x[0]>=posicao_quadrados_x[i]) && (posicao_bola_x[0]<=(posicao_quadrados_x[i]+tam_quadrado)) && (posicao_quadrados_ativo[i] == 1) ){
 				detecta=1;
 				desenha_retangulo(&posicao_quadrados[i],2);
@@ -172,46 +173,32 @@ void movimentaBola (int * x, int * y, char direcao, char altura){
 	desenha_circulo(*x,*y,2,1);//desenha a nova bola
 	posicao_bola_y[0]=*y;//atualiza posicao bola
 	posicao_bola_x[0]=*x;
-	HAL_Delay(70);
+	HAL_Delay(50);
 }
 
 
 int perdeu_jogo(){
 	if(posicao_bola_y[0]+2>45){
 		limpa_LCD();
-		goto_XY(0,0);
+	/*	goto_XY(0,0);
 		string_LCD("              sorry, but you LOST :(           ");
-		HAL_Delay(1000);
+		HAL_Delay(200);*/
 		return 1;
 		}
 	else
 		return 0;
 }
 
-
-
 int checa_borda_dir(int x, int y){
 	if(x+2 >= 84){//limites do display direito
-/*
-		goto_XY(0,0);
-		string_LCD("dir");
-		do{
-			movimentaBola(&x,&y,'E','D');
-		}while((!checa_bateu_barra()) && (!perdeu_jogo()) && (!checa_borda_esq(x,y)) && (!checa_borda_cim(x,y)));
-*/
 		return 1;
 	}
 	return 0;
 
 }
-int checa_borda_esq(int x, int y){
 
+int checa_borda_esq(int x, int y){
 	if(x-2 <= 0){//limites do display esquerdo
-		/*goto_XY(0,0);
-		string_LCD("esq");
-		do{
-			movimentaBola(&x,&y,'D','D');
-		}while((!checa_bateu_barra()) && (!perdeu_jogo()) && (!checa_borda_cim(x,y)) && (!checa_borda_dir(x,y)));*/
 		return 1;
 	}
 	return 0;
@@ -219,16 +206,8 @@ int checa_borda_esq(int x, int y){
 
 int checa_borda_cim(int x, int y){
 	if(y-2 <= 0){//limite do display superior
-/*
-		goto_XY(0,0);
-		string_LCD("cim");
-		do{
-			movimentaBola(&x,&y,'D','D');
-		}while((!checa_bateu_barra()) && (!perdeu_jogo()) && (!checa_borda_esq(x,y)) && (!checa_borda_dir(x,y)));
-*/
 		return 1;
 	}
-
 	return 0;
 }
 
@@ -240,46 +219,70 @@ int checa_limites_tela(int x, int y){
 }
 
 void inicializa_bola(int *x,int *y){
-	uint32_t perdeu_=0;
+	uint32_t init=0;
 	posicao_bola_x[0]=*x;
 	posicao_bola_y[0]=*y;
 	//flag_pos_x=x;
 	desenha_circulo(*x,*y,2,1);//desenha a nova bola
-	while(perdeu_== 0){
+	while(init== 0){
 		desenha_circulo(*x,*y,2,0);//apaga
-			*y=(*y)+1;
-			desenha_circulo(*x,*y,2,1);//desenha a nova bola
-			posicao_bola_x[0]=*x;
-			posicao_bola_y[0]=*y;
-			HAL_Delay(200);
+		*y=(*y)+1;
+		desenha_circulo(*x,*y,2,1);//desenha a nova bola
+		posicao_bola_x[0]=*x;
+		posicao_bola_y[0]=*y;
+		HAL_Delay(200);
 		//checando se a bola esta batendo na barra
 		if(checa_bateu_barra()){
-				perdeu_=1;
+				init=1;
 		}
-		else{
-			perdeu_jogo();
+		else if (perdeu_jogo()){
+			init=1;
+			perdeu=1; //variavel na fucao restart
+			srand(semente); // numeros aleatorios
+			x=rand()%82;
+			y=25;
+			score=0;
+			perdeu=1;
+			n_linhas=2;
+			restart(&x,&y);
 		}
 	}
 }
 
 void restart(int *x, int *y){
-	score=0;
 	limpa_LCD();
-	goto_XY(0,0);
-	string_LCD("              Press the Joystick to restart                      ");
-	//imprime_LCD();
-	while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){ // enquando nao pressionar joystick fica travado
-				semente++;		// semente para o gerador de n�meros pseudoaleatorios
-								// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
+	posicao_bola_x[0]=*x;
+	posicao_bola_y[0]=*y;
+	if(score == 50){
+		goto_XY(0,0);
+		string_LCD("              FASE 2                    ");
+		HAL_Delay(1000);
+		n_linhas=3;
+		score=51;
 	}
-	HAL_Delay(200);
+/*	else if(score == 60){
+		goto_XY(0,0);
+		string_LCD("              FASE 3                    ");
+		HAL_Delay(1000);
+		n_linhas=4;
+	}*/
+	else if (perdeu==1){
+		goto_XY(0,0);
+		string_LCD("              LOSER         Press the Joystick to restart                      ");
+
+		while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){ // enquando nao pressionar joystick fica travado
+					semente++;		// semente para o gerador de n�meros pseudoaleatorios
+									// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
+		}
+	}
 	limpa_LCD();
-	perdeu=1;
-	HAL_Delay(100);
+	perdeu=0;
+	//HAL_Delay(100);
 	desenha_quadradinhos();
-	HAL_Delay(100);
+	//HAL_Delay(100);
 	inicializa_bola(&(*x),&(*y));
 }
+
 void vTask_Bola (void *pvParameters){
 	uint32_t x=0;
 	uint32_t y=25;
@@ -328,7 +331,7 @@ void vTask_Bola (void *pvParameters){
 					apagaBola;
 					x += aleatorio;
 					while((!detecta_colisao_quadrados()) && trocouSentido == 0){ //enquanto nao bater no quadrado de cima
-						if (checa_borda_esq(x,y)==1 || checa_borda_dir(x,y)==1 || checa_borda_cim(x,y)==1 ){
+						if ( checa_limites_tela(x,y) ){
 							trocouSentido = 1;
 						}
 
@@ -389,7 +392,7 @@ void vTask_Bola (void *pvParameters){
 					apagaBola;
 					x += aleatorio;
 					while((!detecta_colisao_quadrados()) && trocouSentido == 0){ ///enquanto nao bater na barra de cima
-						if (checa_borda_esq(x,y)==1 || checa_borda_dir(x,y)==1 || checa_borda_cim(x,y)==1 ){
+						if ( checa_limites_tela(x,y) ){
 							trocouSentido = 1;
 						}
 						/*if(posicao_bola_x[0]+2 >= 84){
@@ -465,6 +468,8 @@ void vTask_Bola (void *pvParameters){
 				flag_= 1;
 				flag_pos_x=x;
 				flag_pos_y=y;
+				posicao_bola_x[0]=x;
+				posicao_bola_y[0]=y;
 				trocouSentido = 0;
 				while(flag_==1){// caso bateu nos quadrados ele vai voltar na diagonal até que a flag volte para 0
 					//checa se bateu na barra
@@ -496,11 +501,42 @@ void vTask_Bola (void *pvParameters){
 						trocouSentido = 1;
 					}
 				}
+
 			}
+			//proxima fase
+			if (score==50){
+				limpa_LCD();
+				HAL_Delay(100);
+				fase=1;
+				srand(semente); // numeros aleatorios
+				x=rand()%82;
+				y=35;
+				posicao_bola_x[0]=x;
+				posicao_bola_y[0]=y;
+				HAL_Delay(500);
+				restart(&x,&y);
+			}
+			/*if (score == 60){
+				limpa_LCD();
+				HAL_Delay(100);
+				fase=1;
+				srand(semente); // numeros aleatorios
+				x=rand()%82;
+				y=30;
+				posicao_bola_x[0]=x;
+				posicao_bola_y[0]=y;
+				HAL_Delay(500);
+				restart(&x,&y);
+
+			}*/
 		}
+
 		srand(semente); // numeros aleatorios
 		x=rand()%82;
 		y=25;
+		score=0;
+		perdeu=1;
+		n_linhas=2;
 		restart(&x,&y);
 /*		limpa_LCD();
 		goto_XY(0,0);
@@ -566,16 +602,16 @@ void vTask_Base (void *pvParameters){
 			}
 
 			desenha_retangulo(&t,3);
-			HAL_Delay(20);
+			HAL_Delay(50);
 		}
-		if(perdeu==1){
+	/*	if(perdeu==1){
 			t.x2 =50; //sup_x  largura da linha (fica maior quando aumenta o numero)
 			t.y2 =45; //sup_y //altura (fica maior quando diminui o numero)
 			t.x1 = 30; //inf_x // comprimento (linha maior quando diminui o numero
 			t.y1 = 50; //inf_y //
 			desenha_retangulo(&t,3);
 			perdeu=0;
-		}
+		}*/
 
 	}
 }
