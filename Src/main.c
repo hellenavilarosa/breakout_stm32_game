@@ -9,6 +9,9 @@
 #include "NOKIA5110_fb.h"
 #include "figuras.h"
 #include "PRNG_LFSR.h"
+#include "tim.h"
+#include "music.h"
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -24,6 +27,7 @@ uint32_t valor_ADC[2];
 xTaskHandle Quadradinhos;
 xTaskHandle Bola;
 xTaskHandle Base;
+xTaskHandle Music;
 #define lim_sup_X 80					// Limite superior no eixo X
 #define lim_sup_Y 25					// Limite superior no eixo Y
 #define lim_inf_X 0						// Limite inferior no eixo X
@@ -39,7 +43,7 @@ static uint32_t posicao_quadrados_y[30] = {};
 static uint32_t posicao_quadrados_y1[30] = {};
 static uint32_t posicao_quadrados_x[30] = {};
 static uint32_t posicao_quadrados_ativo[25] = {};//ativo
-static uint32_t detectou_colisao=0,score=0;
+static uint32_t detectou_colisao=0,score=0,musica=0,start_song=0;
 
 static uint32_t n_quadrados_linha=4,tam_quadrado=15,n_linhas=2,alt_quadrado=10;// contando que 5 pixels sao de espaco
 uint32_t semente=1;
@@ -123,7 +127,7 @@ void vTask_Quadradinhos (void *pvParameters){
 
 
 	while (1){
-
+		//musica();
 	}
 
 }
@@ -139,6 +143,7 @@ int detecta_colisao_quadrados(){
 				detectou_colisao=1;
 				score=score+10;
 				escreve_Nr_Peq(0,0,score,0);
+				//musica();
 				return 1;
 			}
 	}
@@ -173,13 +178,14 @@ void movimentaBola (int * x, int * y, char direcao, char altura){
 	desenha_circulo(*x,*y,2,1);//desenha a nova bola
 	posicao_bola_y[0]=*y;//atualiza posicao bola
 	posicao_bola_x[0]=*x;
-	HAL_Delay(50);
+	HAL_Delay(100);
 }
 
 
 int perdeu_jogo(){
 	if(posicao_bola_y[0]+2>45){
 		limpa_LCD();
+		musica=1;
 	/*	goto_XY(0,0);
 		string_LCD("              sorry, but you LOST :(           ");
 		HAL_Delay(200);*/
@@ -253,20 +259,17 @@ void restart(int *x, int *y){
 	limpa_LCD();
 	posicao_bola_x[0]=*x;
 	posicao_bola_y[0]=*y;
-	if(score == 50){
+
+	if(score == 70){
 		goto_XY(0,0);
 		string_LCD("              FASE 2                    ");
 		HAL_Delay(1000);
 		n_linhas=3;
-		score=51;
+		score=81;
 	}
-/*	else if(score == 60){
-		goto_XY(0,0);
-		string_LCD("              FASE 3                    ");
-		HAL_Delay(1000);
-		n_linhas=4;
-	}*/
+
 	else if (perdeu==1){
+		//musica();
 		goto_XY(0,0);
 		string_LCD("              LOSER         Press the Joystick to restart                      ");
 
@@ -275,8 +278,10 @@ void restart(int *x, int *y){
 									// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
 		}
 	}
+
 	limpa_LCD();
 	perdeu=0;
+	musica=0;
 	//HAL_Delay(100);
 	desenha_quadradinhos();
 	//HAL_Delay(100);
@@ -504,7 +509,7 @@ void vTask_Bola (void *pvParameters){
 
 			}
 			//proxima fase
-			if (score==50){
+			if (score==70){
 				limpa_LCD();
 				HAL_Delay(100);
 				fase=1;
@@ -516,19 +521,13 @@ void vTask_Bola (void *pvParameters){
 				HAL_Delay(500);
 				restart(&x,&y);
 			}
-			/*if (score == 60){
-				limpa_LCD();
-				HAL_Delay(100);
-				fase=1;
-				srand(semente); // numeros aleatorios
-				x=rand()%82;
-				y=30;
-				posicao_bola_x[0]=x;
-				posicao_bola_y[0]=y;
-				HAL_Delay(500);
-				restart(&x,&y);
+			if (score >= 160){
+				goto_XY(0,0);
+				string_LCD("             YOU WIN! YOU ARE THE BEST                   ");
+				HAL_Delay(5000);
 
-			}*/
+
+			}
 		}
 
 		srand(semente); // numeros aleatorios
@@ -538,26 +537,9 @@ void vTask_Bola (void *pvParameters){
 		perdeu=1;
 		n_linhas=2;
 		restart(&x,&y);
-/*		limpa_LCD();
-		goto_XY(0,0);
-		string_LCD("              Press the Joystick to restart                      ");
-		//imprime_LCD();
-		while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_15)){ // enquando nao pressionar joystick fica travado
-					semente++;		// semente para o gerador de n�meros pseudoaleatorios
-									// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
-		}
-		HAL_Delay(200);
-		limpa_LCD();
-		perdeu=1;
-		HAL_Delay(100);
-		desenha_quadradinhos();
-		x=40;
-		y=25;
-		HAL_Delay(100);
-		inicializa_bola(&x,&y);*/
+
 	}
 }
-
 
 void vTask_Base (void *pvParameters){
 	struct pontos_t t;
@@ -582,6 +564,7 @@ void vTask_Base (void *pvParameters){
 				desenha_retangulo(&t,2);
 				t.x2+=1;
 				t.x1+=1;
+
 			}
 			desenha_retangulo(&t,3);
 			HAL_Delay(50);
@@ -604,19 +587,43 @@ void vTask_Base (void *pvParameters){
 			desenha_retangulo(&t,3);
 			HAL_Delay(50);
 		}
-	/*	if(perdeu==1){
-			t.x2 =50; //sup_x  largura da linha (fica maior quando aumenta o numero)
-			t.y2 =45; //sup_y //altura (fica maior quando diminui o numero)
-			t.x1 = 30; //inf_x // comprimento (linha maior quando diminui o numero
-			t.y1 = 50; //inf_y //
-			desenha_retangulo(&t,3);
-			perdeu=0;
-		}*/
+
 
 	}
 }
 
+void vTask_Music(void *pvParameters){
+	uint32_t i = 0;
 
+	while(1){
+
+			while(musica==0){//enquanto não perde o jogo toca musica
+				HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+				if(music[0][i] != 0){
+					__HAL_TIM_SET_PRESCALER(&htim1,music[0][i]);
+					HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+				}
+				vTaskDelay(music[1][i]);
+				i++;
+
+				if(i>=132){
+					i = 0;
+				}
+				/*if(detecta_colisao_quadrados()){
+					__HAL_TIM_SET_PRESCALER(&htim1,music[0][20]);
+					HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+					vTaskDelay(music[1][5]);
+					HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+				}*/
+			}
+			//perdeu  o jogo faz esse barulhinho
+			__HAL_TIM_SET_PRESCALER(&htim1,music[0][100]);
+			HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+			vTaskDelay(music[1][10]);
+			HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
+		}
+
+}
 
 //---------------------------------------------------------------------------------------------------
 /* USER CODE END 0 */
@@ -654,7 +661,7 @@ int main(void)
 	MX_GPIO_Init();
 	MX_DMA_Init();
 	MX_ADC1_Init();
-
+	  MX_TIM1_Init();
 	/* USER CODE BEGIN 2 */
 	// inicializa LCD 5110
 	inic_LCD();
@@ -666,9 +673,11 @@ int main(void)
 	goto_XY(0,0);
 	string_LCD("               Press the Joystick to start THE BREAKOUT GAME :)                     ");
 
+	//HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	//TIM1->PSC = 200;
 
 	HAL_ADC_Start_DMA(&hadc1,(uint32_t*)ADC_buffer,2);
-	HAL_ADC_Start_IT(&hadc1);
+	//HAL_ADC_Start_IT(&hadc1);
 
 	imprime_LCD();
 
@@ -679,6 +688,7 @@ int main(void)
 				semente++;		// semente para o gerador de n�meros pseudoaleatorios
 								// pode ser empregado o ADC lendo uma entrada flutuante para gerar a semente.
 	}
+
 
 
 
@@ -714,12 +724,10 @@ int main(void)
 
 	/* USER CODE BEGIN RTOS_THREADS */
 	xTaskCreate(vTask_LCD_Print, "Task 1", 100, NULL, 1,NULL);
-//	xTaskCreate(vTask_Nr_Print, "Task 2", 100, NULL, 1,NULL);
 	xTaskCreate(vTask_Quadradinhos,"Task 2",100,NULL,1,NULL);
 	xTaskCreate(vTask_Bola,"Task 3",100,NULL,1,NULL);
-	xTaskCreate(vTask_Base,"Task 4",100,NULL,1,NULL);
-
-//	xTaskCreate(vTask_Perdeu,"Task 5",100,NULL,2,NULL);
+	xTaskCreate(vTask_Base,"Task 4",50,NULL,1,NULL);
+	xTaskCreate(vTask_Music,"Task 5",100,NULL,1,NULL);
 	/* USER CODE END RTOS_THREADS */
 
 	/* USER CODE BEGIN RTOS_QUEUES */
