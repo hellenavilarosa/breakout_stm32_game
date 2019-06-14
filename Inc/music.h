@@ -1,9 +1,3 @@
-/*
- * music.hpp
- *
- *  Created on: 27 de nov de 2018
- *      Author: fbroering
- */
 
 #ifndef MUSIC_H_
 #define MUSIC_H_
